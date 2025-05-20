@@ -1,0 +1,12 @@
+serverPort: "8080"
+
+db:
+  host: "localhost"
+  user: "postgres"
+  password: "1"
+  name: "postgres"
+  port: 5432
+  sslMode: "disable"
+
+auth:
+  apiKey: "super-secret-api-key"

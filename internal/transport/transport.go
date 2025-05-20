@@ -1,60 +1,75 @@
 package transport
 
 import (
-	"cinema_app_gpt/internal/repository"
-	"context"
 	"fmt"
-	"log/slog"
+	"microservice_template/internal/repository"
+	"microservice_template/internal/services"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-type Handlers struct {
-	logger *slog.Logger
-	DB     *gorm.DB
-	//repo   Repository
+type SeatHandler struct {
+	service services.SeatService
 }
 
-func NewHandlers(logger *slog.Logger, db *gorm.DB) *Handlers { //repo Repository
-	return &Handlers{
-		logger: logger,
-		DB:     db,
-		//repo:   repo,
+func NewSeatHandler(s services.SeatService) *SeatHandler {
+	return &SeatHandler{service: s}
+}
+
+func (h *SeatHandler) RegisterRoutes(r *gin.Engine) {
+	seat := r.Group("/seat")
+	{
+		seat.GET("", h.GetSeats)
+		seat.POST("", h.BuySeat)
+	}
+
+	movie := r.Group("/createmovie")
+	{
+		movie.POST("", h.CreateMovie)
 	}
 }
 
-func (a *App) InitServer(db *gorm.DB) error {
-	a.repository = repository.NewRepository(a.logger, a.dbConn)
-
-	err := a.repository.Migrate()
+func (h *SeatHandler) GetSeats(c *gin.Context) {
+	seat, err := h.service.GetSeats()
 	if err != nil {
-		return fmt.Errorf("failed to migrate db: %w", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve seat"})
+		return
+	}
+	c.JSON(http.StatusOK, seat)
+}
+
+func (h *SeatHandler) BuySeat(c *gin.Context) {
+	var seat repository.Hall1
+	if err := c.ShouldBindJSON(&seat); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
 	}
 
-	a.handlers = NewHandlers(a.logger, db)
-
-	//gin.SetMode(gin.ReleaseMode)
-	router := gin.Default()
-	router.POST("/api/v1/bookings/:workshop_id", a.handlers.CreateBooking)
-	router.GET("/api/v1/bookings/:workshop_id", a.handlers.ListBookings)
-
-	a.router = router
-
-	server := &http.Server{
-		Addr:    fmt.Sprintf("localhost:%s", "8080"),
-		Handler: router,
+	if seat.User == "" || seat.Movie == "" || seat.Time == "" || seat.Seat == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Fulfill all data"})
+		return
 	}
 
-	a.http = server
-	a.closers = append(a.closers, func() error {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
+	fmt.Println("------BuySeat seat - ", seat)
+	if err := h.service.BuySeat(&seat); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not buy seat"})
+		return
+	}
+	c.JSON(http.StatusCreated, seat)
+}
 
-		return a.http.Shutdown(ctx)
-	})
+func (h *SeatHandler) CreateMovie(c *gin.Context) {
+	var seat repository.Hall1
+	if err := c.ShouldBindJSON(&seat); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
 
-	return nil
+	if err := h.service.CreateMovie(&seat); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create movie"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, seat)
 }

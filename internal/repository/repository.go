@@ -1,37 +1,44 @@
 package repository
 
 import (
-	"cinema_app_gpt/internal/services"
-	"log"
-	"log/slog"
-
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-type Repository struct {
-	logger *slog.Logger
-	pool   *gorm.DB
+type Hall1 struct {
+	Seat   int    `gorm:"primaryKey"`
+	Status string `json:"status"`
+	Movie  string `json:"movie"`
+	Time   string `json:"time"`
+	User   string `json:"user"`
 }
 
-func NewRepository(logger *slog.Logger, pool *gorm.DB) *Repository {
-	return &Repository{
-		logger: logger,
-		pool:   pool,
-	}
+type SeatRepository interface {
+	GetAll() ([]Hall1, error)
+	BuySeat(seat *Hall1) error
+	CreateMovie(seat *Hall1) error
 }
 
-func InitDBConn() *gorm.DB {
+type seatRepository struct {
+	db *gorm.DB
+}
 
-	var db *gorm.DB
-	dsn := "host=localhost user=postgres password=1 dbname=postgres port=5432 sslmode=disable"
-	var err error
-	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatal("Failed to connect to DB:", err)
-	}
+func NewSeatRepository(db *gorm.DB) SeatRepository {
+	db.AutoMigrate(&Hall1{})
+	return &seatRepository{db: db}
+}
 
-	db.AutoMigrate(&services.User{}, &services.Movie{}, &services.Showtime{}, &services.Seat{})
+func (r *seatRepository) GetAll() ([]Hall1, error) {
+	var seat []Hall1
+	err := r.db.Find(&seat).Error
+	return seat, err
+}
 
-	return db
+func (r *seatRepository) BuySeat(seat *Hall1) error {
+
+	return r.db.Model(&seat).Where("seat = ?", seat.Seat).Updates(seat).Error
+
+}
+
+func (r *seatRepository) CreateMovie(seat *Hall1) error {
+	return r.db.Create(seat).Error
 }
