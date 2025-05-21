@@ -7,7 +7,7 @@ import (
 
 type SeatService interface {
 	GetSeats() ([]repository.Hall1, error)
-	BuySeat(seat *repository.Hall1) error
+	BuySeatSvc(seat *repository.Hall1) error
 	CreateMovie(seat *repository.Hall1) error
 }
 
@@ -23,8 +23,8 @@ func (s *seatService) GetSeats() ([]repository.Hall1, error) {
 	return s.repo.GetAll()
 }
 
-func (s *seatService) BuySeat(seat *repository.Hall1) error {
-	return s.repo.BuySeat(seat)
+func (s *seatService) BuySeatSvc(seat *repository.Hall1) error {
+	return s.repo.BuySeatRepo(seat, *seat)
 }
 
 func (s *seatService) CreateMovie(seat *repository.Hall1) error {
