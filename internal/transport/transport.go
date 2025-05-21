@@ -50,15 +50,33 @@ func (h *SeatHandler) BuySeatTransport(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.BuySeatSvc(&seat); err != nil {
+	status, err := h.service.BuySeatSvc(&seat)
+	if err != nil {
+		// For DB or unknown errors
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, "seat is booked or sold OR ur seat booked successfully") //seat)
+
+	switch status {
+	case repository.StatusSuccessBought:
+		c.JSON(http.StatusCreated, gin.H{"message": "Seat is bought successfully", "seat": seat})
+	case repository.StatusSuccessReserved:
+		c.JSON(http.StatusCreated, gin.H{"message": "Seat is booked successfully", "seat": seat})
+	case repository.StatusSeatSold:
+		c.JSON(http.StatusConflict, gin.H{"error": "Seat is already sold"})
+	case repository.StatusReservedByAnother:
+		c.JSON(http.StatusForbidden, gin.H{"error": "Seat is reserved by another user"})
+	case repository.StatusSeatNotFound:
+		c.JSON(http.StatusNotFound, gin.H{"error": "Seat not found"})
+	case repository.StatusUnknownStatus:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unknown seat status"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unexpected error"})
+	}
 }
 
 func (h *SeatHandler) CreateMovie(c *gin.Context) {
-	var seat repository.Hall1
+	var seat repository.Hall1 //repository.Hall1
 	if err := c.ShouldBindJSON(&seat); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return

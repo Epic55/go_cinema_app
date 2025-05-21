@@ -7,7 +7,7 @@ import (
 
 type SeatService interface {
 	GetSeats() ([]repository.Hall1, error)
-	BuySeatSvc(seat *repository.Hall1) error
+	BuySeatSvc(seat *repository.Hall1) (string, error)
 	CreateMovie(seat *repository.Hall1) error
 }
 
@@ -23,16 +23,16 @@ func (s *seatService) GetSeats() ([]repository.Hall1, error) {
 	return s.repo.GetAll()
 }
 
-func (s *seatService) BuySeatSvc(seat *repository.Hall1) error {
+func (s *seatService) BuySeatSvc(seat *repository.Hall1) (string, error) {
 	return s.repo.BuySeatRepo(seat, *seat)
 }
 
 func (s *seatService) CreateMovie(seat *repository.Hall1) error {
-	movies := []string{"Matrix"}
-	times := []string{"10:00"}
+	movies := []string{seat.Movie}
+	times := []string{seat.Time}
 	statuses := []string{"available"}
 
-	for i := 1; i <= 10; i++ {
+	for i := 1; i <= seat.Seat; i++ {
 		h := repository.Hall1{
 			Seat:   i,
 			Status: statuses[rand.Intn(len(statuses))],

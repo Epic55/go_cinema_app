@@ -1,14 +1,23 @@
 package repository
 
 import (
-	"errors"
 	"fmt"
 
 	"gorm.io/gorm"
 )
 
+const (
+	StatusSuccessBought     = "success_bought"
+	StatusSuccessReserved   = "success_reserved"
+	StatusSeatSold          = "seat_sold"
+	StatusReservedByAnother = "reserved_by_another"
+	StatusSeatNotFound      = "not_found"
+	StatusUnknownStatus     = "unknown_status"
+	StatusDBError           = "db_error"
+)
+
 type Hall1 struct {
-	Seat   int    `json:"seat" gorm:"primaryKey"`
+	Seat   int    `json:"seat"` //gorm:"primaryKey"`
 	Status string `json:"status"`
 	Movie  string `json:"movie"`
 	Time   string `json:"time"`
@@ -17,7 +26,7 @@ type Hall1 struct {
 
 type SeatRepository interface {
 	GetAll() ([]Hall1, error)
-	BuySeatRepo(seat *Hall1, seat1 Hall1) error
+	BuySeatRepo(seat *Hall1, seat1 Hall1) (string, error)
 	CreateMovie(seat *Hall1) error
 }
 
@@ -36,43 +45,35 @@ func (r *seatRepository) GetAll() ([]Hall1, error) {
 	return seat, err
 }
 
-func (r *seatRepository) BuySeatRepo(seat *Hall1, seat1 Hall1) error {
+func (r *seatRepository) BuySeatRepo(seat *Hall1, seat1 Hall1) (string, error) {
 	if err := r.db.Where("seat = ?", seat.Seat).First(seat).Error; err != nil {
-		return fmt.Errorf("seat not found: %w", err)
+		return StatusSeatNotFound, fmt.Errorf("seat not found: %w", err)
 	}
 
 	switch seat.Status {
 	case "sold":
-		return errors.New("seat is sold")
+		return StatusSeatSold, nil
 	case "reserved":
 		if seat.User != seat1.User {
-			return errors.New("seat is reserved by another user")
+			return StatusReservedByAnother, nil
 		}
-		return r.db.Model(seat).Updates(seat1).Error
+		if err := r.db.Model(seat).Updates(seat1).Error; err != nil {
+			return StatusDBError, err
+		}
+		return StatusSuccessBought, nil
 	case "available":
-		return r.db.Model(seat).Updates(seat1).Error
+		if err := r.db.Model(seat).Updates(seat1).Error; err != nil {
+			return StatusDBError, err
+		}
+		return StatusSuccessReserved, nil
 	default:
-		return fmt.Errorf("unknown seat status: %s", seat.Status)
+		return StatusUnknownStatus, fmt.Errorf("unknown seat status: %s", seat.Status)
 	}
-
-	// if err := r.db.Find(seat, seat.Seat).Error; err != nil {
-	// 	return fmt.Errorf("seat not found: %w", err)
-	// }
-
-	// switch {
-	// case seat.Status == "sold":
-	// 	return errors.New("seat is sold")
-	// case seat.Status == "reserved" && seat.User != seat1.User:
-	// 	return errors.New("seat is reserved")
-	// case seat.Status == "reserved" && seat.User == seat1.User:
-	// 	return r.db.Model(&seat1).Where("seat = ?", seat1.Seat).Updates(seat1).Error
-	// case seat.Status == "available":
-	// 	return r.db.Model(&seat1).Where("seat = ?", seat1.Seat).Updates(seat1).Error
-	// default:
-	// 	return fmt.Errorf("unknown status: %s", seat.Status)
-	// }
 }
 
 func (r *seatRepository) CreateMovie(seat *Hall1) error {
+	// if err := r.db.Exec("TRUNCATE TABLE hall1 RESTART IDENTITY CASCADE").Error; err != nil {
+	// 	return err
+	// }
 	return r.db.Create(seat).Error
 }
