@@ -1,7 +1,7 @@
 package main
 
 import (
-	"microservice_template/internal/app"
+	"go_cinema_app/internal/app"
 )
 
 func main() {

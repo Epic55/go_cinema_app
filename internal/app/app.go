@@ -2,11 +2,11 @@ package app
 
 import (
 	"fmt"
-	"microservice_template/internal/logging"
-	"microservice_template/internal/middleware"
-	"microservice_template/internal/repository"
-	"microservice_template/internal/services"
-	"microservice_template/internal/transport"
+	"go_cinema_app/internal/logging"
+	"go_cinema_app/internal/middleware"
+	"go_cinema_app/internal/repository"
+	"go_cinema_app/internal/services"
+	"go_cinema_app/internal/transport"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
